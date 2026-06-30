@@ -129,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!payload || isTokenExpired(payload)) {
         // Token expired — auto-logout
         localStorage.removeItem(TOKEN_KEY);
+        document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
         setToken(null);
         setUser(null);
         router.push('/login');
@@ -159,9 +160,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // If 401, token is invalid — logout
         if (response.status === 401) {
           localStorage.removeItem(TOKEN_KEY);
-          setToken(null);
-          setUser(null);
-          router.push('/login');
+        document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
+        setToken(null);
+        setUser(null);
+        router.push('/login');
         }
         return;
       }
@@ -228,7 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     // Clear cookie too
-    document.cookie = 'token=; path=/; max-age=0';
+    document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
     setToken(null);
     setUser(null);
     router.push('/login');
@@ -259,3 +261,5 @@ export function useAuth(): AuthContextValue {
   }
   return context;
 }
+
+

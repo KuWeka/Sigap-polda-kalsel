@@ -46,6 +46,7 @@ api.interceptors.response.use(
     // 401: Clear auth state and redirect to login
     if (status === 401) {
       localStorage.removeItem('token');
+      document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
       window.location.href = '/login';
       return Promise.reject(error);
     }
@@ -391,3 +392,4 @@ export const auditApi = {
   list: (params?: Record<string, string | number>) =>
     api.get('/audit', { params }),
 };
+
