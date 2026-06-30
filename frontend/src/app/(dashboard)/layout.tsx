@@ -41,7 +41,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         const data = res.data?.data || res.data;
         if (data) {
           setSettings({
-            appName: data.appName || "SIGAP",el",
+            appName: data.appName || "SIGAP",
             appLogo: data.appLogo || null,
           });
         }
