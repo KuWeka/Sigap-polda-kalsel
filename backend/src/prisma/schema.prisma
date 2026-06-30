@@ -196,3 +196,8 @@ model SystemSettings {
   appName String  @default("SIGAP") @db.VarChar(100)
   appLogo String? @db.VarChar(500)
 }
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
