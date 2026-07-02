@@ -212,11 +212,11 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
       doc.font('Helvetica-Bold').fontSize(14).text('KEPOLISIAN NEGARA REPUBLIK INDONESIA', textStartX, doc.y, { width: textWidth, align: 'center' });
       doc.fontSize(12).text('DAERAH KALIMANTAN SELATAN', textStartX, doc.y, { width: textWidth, align: 'center' });
       doc.font('Helvetica').fontSize(9).text('Jalan Bina Praja Timur, Kelurahan Sungai Tiung, Kecamatan Cempaka,\nKota Banjarbaru, Kalimantan Selatan – Indonesia', textStartX, doc.y, { width: textWidth, align: 'center' });
-      
+
       // Calculate where the line should be (below logos and text)
       const textBottomY = doc.y;
       let lineY = Math.max(textBottomY, maxLogoBottom) + 12; // Memberi jarak lega dari ujung paling bawah
-      
+
       // Draw double line for letterhead
       doc.lineWidth(2).moveTo(40, lineY).lineTo(doc.page.width - 40, lineY).stroke();
       doc.lineWidth(1).moveTo(40, lineY + 3).lineTo(doc.page.width - 40, lineY + 3).stroke();
@@ -242,7 +242,7 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
       // Instead of big cards, use formal text format
       doc.font('Helvetica-Bold').fontSize(9).text('Ringkasan:', 40, doc.y);
       doc.font('Helvetica').fontSize(9)
-         .text(`Total: ${reportData.summary.total} | Pending: ${reportData.summary.pending} | Proses: ${reportData.summary.proses} | Selesai: ${reportData.summary.selesai} | Dibatalkan: ${reportData.summary.dibatalkan} | Rating: ${reportData.summary.averageRating ?? '-'}`, 40, doc.y);
+        .text(`Total: ${reportData.summary.total} | Pending: ${reportData.summary.pending} | Proses: ${reportData.summary.proses} | Selesai: ${reportData.summary.selesai} | Dibatalkan: ${reportData.summary.dibatalkan} | Rating: ${reportData.summary.averageRating ?? '-'}`, 40, doc.y);
       doc.moveDown(1);
 
       // --- TABLE SECTION ---
@@ -285,27 +285,27 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
             } else {
               doc.font('Helvetica').fillColor('black');
             }
-            
+
             doc.fontSize(7);
             doc.text(text, xPos + 4, y + 6, {
               width: columns[i].width - 8,
               height: rowHeight - 6,
               align: 'left'
             });
-            
+
             // Draw left border for this cell
             const strokeColor = isHeader ? '#FFFFFF' : '#CCCCCC';
             doc.strokeColor(strokeColor);
             doc.moveTo(xPos, y).lineTo(xPos, y + rowHeight).stroke();
-            
+
             xPos += columns[i].width;
           });
-          
+
           // Draw rightmost border
           const strokeColor = isHeader ? '#FFFFFF' : '#CCCCCC';
           doc.strokeColor(strokeColor);
           doc.moveTo(startX + totalWidth, y).lineTo(startX + totalWidth, y + rowHeight).stroke();
-          
+
           // Draw bottom border
           doc.moveTo(startX, y + rowHeight).lineTo(startX + totalWidth, y + rowHeight).stroke();
 
@@ -314,7 +314,7 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
 
         // Draw top border for the first row (header)
         doc.moveTo(startX, currentY).lineTo(startX + totalWidth, currentY).stroke();
-        
+
         // Draw Header
         const headerData = columns.map(c => c.header);
         currentY = drawRow(currentY, headerData, true);
@@ -356,17 +356,17 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
 
       const today = new Date();
       const formattedDate = `${today.getDate()} ${monthNames[today.getMonth()]} ${today.getFullYear()}`;
-      
+
       const signX = doc.page.width - 250;
       let signY = doc.y;
-      
+
       doc.font('Helvetica').fontSize(10);
       doc.text(`Banjarmasin, ${formattedDate}`, signX, signY, { align: 'center', width: 200 });
       signY += 15;
       doc.text('Administrator Utama SIAGA', signX, signY, { align: 'center', width: 200 });
-      
+
       signY += 60; // Space for signature
-      
+
       doc.font('Helvetica-Bold');
       doc.text('BIDTIK POLDA KALSEL', signX, signY, { align: 'center', width: 200 });
 
