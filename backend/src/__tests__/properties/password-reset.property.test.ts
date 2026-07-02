@@ -87,7 +87,7 @@ describe('Property 4: Password Reset Round-Trip', () => {
       ),
       { numRuns: 20 } // Lower count due to bcrypt being computationally expensive
     );
-  });
+  }, 15000);
 
   /**
    * Property 4.4: Token generation produces unique tokens

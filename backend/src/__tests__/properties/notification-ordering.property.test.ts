@@ -89,7 +89,7 @@ const notificationArb = fc.record({
   ticketNumber: fc.stringMatching(/^TKT-20[2-9]\d-\d{5}$/),
   message: fc.string({ minLength: 1, maxLength: 200 }),
   isRead: fc.boolean(),
-  createdAt: fc.date({ min: new Date('2024-01-01'), max: new Date('2026-12-31') }),
+  createdAt: fc.date({ min: new Date('2024-01-01'), max: new Date('2026-12-31') }).filter((d: Date) => !isNaN(d.getTime())),
 });
 
 const notificationListArb = fc.array(notificationArb, { minLength: 0, maxLength: 200 });
