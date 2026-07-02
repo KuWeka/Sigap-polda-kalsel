@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 enum Role {
@@ -80,7 +81,7 @@ model User {
 
   // Padal-Teknisi team relation
   padalId     String?
-  padal       User?   @relation("PadalTeam", fields: [padalId], references: [id])
+  padal       User?   @relation("PadalTeam", fields: [padalId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   teamMembers User[]  @relation("PadalTeam")
 
   // Password reset
@@ -113,9 +114,9 @@ model Ticket {
 
   // Relations
   creatorId   String
-  creator     User         @relation("TicketCreator", fields: [creatorId], references: [id])
+  creator     User         @relation("TicketCreator", fields: [creatorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   padalId     String?
-  padal       User?        @relation("TicketAssignee", fields: [padalId], references: [id])
+  padal       User?        @relation("TicketAssignee", fields: [padalId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   attachments Attachment[]
   rating      Rating?
 
@@ -137,7 +138,7 @@ model TicketSequence {
 model Attachment {
   id           String   @id @default(uuid())
   ticketId     String
-  ticket       Ticket   @relation(fields: [ticketId], references: [id])
+  ticket       Ticket   @relation(fields: [ticketId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   originalName String   @db.VarChar(255)
   storedName   String   @db.VarChar(255)
   mimeType     String   @db.VarChar(100)
@@ -150,9 +151,9 @@ model Attachment {
 model Rating {
   id        String   @id @default(uuid())
   ticketId  String   @unique
-  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   bintang   Int // 1-5
   feedback  String   @db.Text
   createdAt DateTime @default(now())
@@ -164,7 +165,7 @@ model Rating {
 model Notification {
   id           String           @id @default(uuid())
   userId       String
-  user         User             @relation(fields: [userId], references: [id])
+  user         User             @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   type         NotificationType
   ticketNumber String           @db.VarChar(20)
   message      String           @db.VarChar(500)
@@ -179,7 +180,7 @@ model AuditLog {
   id             String         @id @default(uuid())
   eventType      AuditEventType
   actorId        String
-  actor          User           @relation("AuditActor", fields: [actorId], references: [id])
+  actor          User           @relation("AuditActor", fields: [actorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   actorNama      String         @db.VarChar(100)
   targetEntityId String?        @db.VarChar(255)
   metadata       Json?
