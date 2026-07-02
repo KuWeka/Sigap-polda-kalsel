@@ -183,37 +183,52 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
       const monthName = monthNames[month - 1];
 
       // --- KOP SURAT (LETTERHEAD) ---
-      doc.font('Helvetica-Bold').fontSize(14).text('KEPOLISIAN NEGARA REPUBLIK INDONESIA', { align: 'center' });
-      doc.fontSize(12).text('DAERAH KALIMANTAN SELATAN', { align: 'center' });
-      doc.font('Helvetica').fontSize(10).text('Jalan Bina Praja Timur, Kelurahan Sungai Tiung, Kecamatan Cempaka, Kota Banjarbaru – Kalimantan Selatan – Indonesia', { align: 'center' });
-      
-      // Draw double line for letterhead
-      doc.moveDown(0.5);
-      let lineY = doc.y;
-      doc.lineWidth(2).moveTo(40, lineY).lineTo(doc.page.width - 40, lineY).stroke();
-      doc.lineWidth(1).moveTo(40, lineY + 3).lineTo(doc.page.width - 40, lineY + 3).stroke();
+      const headerStartY = 35;
+      const textStartX = 110;
+      const textWidth = doc.page.width - 220; // Symmetric spacing for text
 
       // Tambahkan Logo jika ada file-nya di folder public/images
       const logoPoldaPath = path.join(__dirname, '../../public/images/logo_polda.png');
       const logoBidtikPath = path.join(__dirname, '../../public/images/logo_bidtik.png');
 
+      let logoHeight = 65; // Estimated height for calculation
       if (fs.existsSync(logoPoldaPath)) {
-        // Logo Polda Kalsel di kiri
-        doc.image(logoPoldaPath, 45, 25, { width: 55 });
+        // Logo Polda Kalsel di kiri (X=40, Width=60)
+        doc.image(logoPoldaPath, 40, headerStartY, { width: 60 });
       }
 
       if (fs.existsSync(logoBidtikPath)) {
-        // Logo Bid TIK di kanan
-        doc.image(logoBidtikPath, doc.page.width - 100, 25, { width: 55 });
+        // Logo Bid TIK di kanan (X=width-100, Width=60 -> Right edge is at width-40)
+        doc.image(logoBidtikPath, doc.page.width - 100, headerStartY, { width: 60 });
       }
 
-      doc.moveDown(2);
+      // Draw Letterhead Text
+      doc.y = headerStartY + 5; // Slight padding from top
+      doc.font('Helvetica-Bold').fontSize(14).text('KEPOLISIAN NEGARA REPUBLIK INDONESIA', textStartX, doc.y, { width: textWidth, align: 'center' });
+      doc.fontSize(12).text('DAERAH KALIMANTAN SELATAN', textStartX, doc.y, { width: textWidth, align: 'center' });
+      doc.font('Helvetica').fontSize(9).text('Jalan Bina Praja Timur, Kelurahan Sungai Tiung, Kecamatan Cempaka, Kota Banjarbaru – Kalimantan Selatan – Indonesia', textStartX, doc.y, { width: textWidth, align: 'center' });
+      
+      // Calculate where the line should be (below logos and text)
+      const textBottomY = doc.y;
+      const logoBottomY = headerStartY + logoHeight;
+      let lineY = Math.max(textBottomY, logoBottomY) + 10;
+      
+      // Draw double line for letterhead
+      doc.lineWidth(2).moveTo(40, lineY).lineTo(doc.page.width - 40, lineY).stroke();
+      doc.lineWidth(1).moveTo(40, lineY + 3).lineTo(doc.page.width - 40, lineY + 3).stroke();
+
+      doc.y = lineY + 15; // Set cursor position for next elements
 
       // --- TITLE ---
-      doc.font('Helvetica-Bold').fontSize(12).text('LAPORAN BULANAN TIKET', { align: 'center', underline: true });
-      doc.font('Helvetica-Bold').fontSize(10).fillColor('#2B6CB0').text(`Bulan ${monthName} ${year}`, { align: 'center' });
+      // We must specify X again because previous text used a specific X. 
+      // Using X = 40 and width = doc.page.width - 80 restores full width centering.
+      const fullWidthX = 40;
+      const fullWidth = doc.page.width - 80;
+
+      doc.font('Helvetica-Bold').fontSize(12).text('LAPORAN BULANAN TIKET', fullWidthX, doc.y, { width: fullWidth, align: 'center', underline: true });
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#2B6CB0').text(`Bulan ${monthName} ${year}`, fullWidthX, doc.y, { width: fullWidth, align: 'center' });
       if (params.padalId) {
-        doc.fillColor('black').font('Helvetica-Oblique').text('(Laporan Padal - Tiket yang ditugaskan)', { align: 'center' });
+        doc.fillColor('black').font('Helvetica-Oblique').text('(Laporan Padal - Tiket yang ditugaskan)', fullWidthX, doc.y, { width: fullWidth, align: 'center' });
       }
       doc.fillColor('black'); // Reset to default
 
