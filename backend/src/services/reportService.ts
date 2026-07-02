@@ -191,27 +191,31 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
       const logoPoldaPath = path.join(__dirname, '../../public/images/logo_polda.png');
       const logoBidtikPath = path.join(__dirname, '../../public/images/logo_bidtik.png');
 
-      let logoHeight = 65; // Estimated height for calculation
+      const logoWidth = 48; // Diperkecil agar lebih rapi
+      const logoY = 25; // Dinaikkan posisinya
+
+      let maxLogoBottom = 0;
       if (fs.existsSync(logoPoldaPath)) {
-        // Logo Polda Kalsel di kiri (X=40, Width=60)
-        doc.image(logoPoldaPath, 40, headerStartY, { width: 60 });
+        // Logo Polda Kalsel di kiri
+        doc.image(logoPoldaPath, 40, logoY, { width: logoWidth });
+        maxLogoBottom = logoY + (logoWidth * 1.3); // Estimasi tinggi
       }
 
       if (fs.existsSync(logoBidtikPath)) {
-        // Logo Bid TIK di kanan (X=width-100, Width=60 -> Right edge is at width-40)
-        doc.image(logoBidtikPath, doc.page.width - 100, headerStartY, { width: 60 });
+        // Logo Bid TIK di kanan, secara simetris dari sisi kanan kertas
+        doc.image(logoBidtikPath, doc.page.width - (40 + logoWidth), logoY, { width: logoWidth });
+        maxLogoBottom = Math.max(maxLogoBottom, logoY + (logoWidth * 1.3));
       }
 
       // Draw Letterhead Text
-      doc.y = headerStartY + 5; // Slight padding from top
+      doc.y = headerStartY + 5; // Text starts slightly lower than logo top
       doc.font('Helvetica-Bold').fontSize(14).text('KEPOLISIAN NEGARA REPUBLIK INDONESIA', textStartX, doc.y, { width: textWidth, align: 'center' });
       doc.fontSize(12).text('DAERAH KALIMANTAN SELATAN', textStartX, doc.y, { width: textWidth, align: 'center' });
-      doc.font('Helvetica').fontSize(9).text('Jalan Bina Praja Timur, Kelurahan Sungai Tiung, Kecamatan Cempaka, Kota Banjarbaru – Kalimantan Selatan – Indonesia', textStartX, doc.y, { width: textWidth, align: 'center' });
+      doc.font('Helvetica').fontSize(9).text('Jalan Bina Praja Timur, Kelurahan Sungai Tiung, Kecamatan Cempaka,\nKota Banjarbaru, Kalimantan Selatan – Indonesia', textStartX, doc.y, { width: textWidth, align: 'center' });
       
       // Calculate where the line should be (below logos and text)
       const textBottomY = doc.y;
-      const logoBottomY = headerStartY + logoHeight;
-      let lineY = Math.max(textBottomY, logoBottomY) + 10;
+      let lineY = Math.max(textBottomY, maxLogoBottom) + 12; // Memberi jarak lega dari ujung paling bawah
       
       // Draw double line for letterhead
       doc.lineWidth(2).moveTo(40, lineY).lineTo(doc.page.width - 40, lineY).stroke();
@@ -225,8 +229,8 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
       const fullWidthX = 40;
       const fullWidth = doc.page.width - 80;
 
-      doc.font('Helvetica-Bold').fontSize(12).text('LAPORAN BULANAN TIKET', fullWidthX, doc.y, { width: fullWidth, align: 'center', underline: true });
-      doc.font('Helvetica-Bold').fontSize(10).fillColor('#2B6CB0').text(`Bulan ${monthName} ${year}`, fullWidthX, doc.y, { width: fullWidth, align: 'center' });
+      doc.font('Helvetica-Bold').fontSize(12).text('LAPORAN BULANAN SIGAP', fullWidthX, doc.y, { width: fullWidth, align: 'center', underline: true });
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#2B6CB0').text(`Bulan: ${monthName} ${year}`, fullWidthX, doc.y, { width: fullWidth, align: 'center' });
       if (params.padalId) {
         doc.fillColor('black').font('Helvetica-Oblique').text('(Laporan Padal - Tiket yang ditugaskan)', fullWidthX, doc.y, { width: fullWidth, align: 'center' });
       }
@@ -236,7 +240,7 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
 
       // --- SUMMARY TEXT ---
       // Instead of big cards, use formal text format
-      doc.font('Helvetica-Bold').fontSize(9).text('RINGKASAN:', 40, doc.y);
+      doc.font('Helvetica-Bold').fontSize(9).text('Ringkasan:', 40, doc.y);
       doc.font('Helvetica').fontSize(9)
          .text(`Total: ${reportData.summary.total} | Pending: ${reportData.summary.pending} | Proses: ${reportData.summary.proses} | Selesai: ${reportData.summary.selesai} | Dibatalkan: ${reportData.summary.dibatalkan} | Rating: ${reportData.summary.averageRating ?? '-'}`, 40, doc.y);
       doc.moveDown(1);
@@ -268,13 +272,21 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
 
         const drawRow = (y: number, rowData: string[], isHeader = false) => {
           let xPos = startX;
-          doc.lineWidth(0.5).strokeColor('#888888'); // gray grid lines
-          
+          doc.lineWidth(0.5);
+
+          if (isHeader) {
+            // Fill row background for header
+            doc.rect(startX, y, totalWidth, rowHeight).fill('#A9A9A9');
+          }
+
           rowData.forEach((text, i) => {
-            if (isHeader) doc.font('Helvetica-Bold');
-            else doc.font('Helvetica');
+            if (isHeader) {
+              doc.font('Helvetica-Bold').fillColor('#FFFFFF');
+            } else {
+              doc.font('Helvetica').fillColor('black');
+            }
             
-            doc.fillColor('black').fontSize(7);
+            doc.fontSize(7);
             doc.text(text, xPos + 4, y + 6, {
               width: columns[i].width - 8,
               height: rowHeight - 6,
@@ -282,11 +294,16 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
             });
             
             // Draw left border for this cell
+            const strokeColor = isHeader ? '#FFFFFF' : '#CCCCCC';
+            doc.strokeColor(strokeColor);
             doc.moveTo(xPos, y).lineTo(xPos, y + rowHeight).stroke();
+            
             xPos += columns[i].width;
           });
           
           // Draw rightmost border
+          const strokeColor = isHeader ? '#FFFFFF' : '#CCCCCC';
+          doc.strokeColor(strokeColor);
           doc.moveTo(startX + totalWidth, y).lineTo(startX + totalWidth, y + rowHeight).stroke();
           
           // Draw bottom border
@@ -346,12 +363,12 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
       doc.font('Helvetica').fontSize(10);
       doc.text(`Banjarmasin, ${formattedDate}`, signX, signY, { align: 'center', width: 200 });
       signY += 15;
-      doc.text('Administrator Utama SIAGA,', signX, signY, { align: 'center', width: 200 });
+      doc.text('Administrator Utama SIAGA', signX, signY, { align: 'center', width: 200 });
       
       signY += 60; // Space for signature
       
       doc.font('Helvetica-Bold');
-      doc.text('BID TIK POLDA KALSEL', signX, signY, { align: 'center', width: 200 });
+      doc.text('BIDTIK POLDA KALSEL', signX, signY, { align: 'center', width: 200 });
 
       doc.end();
     } catch (error) {
