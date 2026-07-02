@@ -180,169 +180,153 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
       ];
-      
-      // Theme colors
-      const primaryColor = '#1A365D'; // Dark blue
-      const secondaryColor = '#2B6CB0'; // Lighter blue
-      const accentColor = '#EDF2F7'; // Light gray for backgrounds
-      const textColor = '#2D3748';
-      const white = '#FFFFFF';
+      const monthName = monthNames[month - 1];
 
-      // --- HEADER ---
-      // Draw a subtle header background
-      doc.rect(0, 0, doc.page.width, 90).fill(primaryColor);
+      // --- KOP SURAT (LETTERHEAD) ---
+      doc.font('Helvetica-Bold').fontSize(14).text('KEPOLISIAN NEGARA REPUBLIK INDONESIA', { align: 'center' });
+      doc.fontSize(12).text('DAERAH KALIMANTAN SELATAN', { align: 'center' });
+      doc.font('Helvetica').fontSize(10).text('Jalan Bina Praja Timur, Kelurahan Sungai Tiung, Kecamatan Cempaka, Kota Banjarbaru – Kalimantan Selatan – Indonesia', { align: 'center' });
       
-      // Title
-      doc.fillColor(white).fontSize(22).font('Helvetica-Bold')
-         .text('SIGAP', 40, 30);
-      
-      doc.fontSize(14).font('Helvetica')
-         .text(`Laporan Bulanan - ${monthNames[month - 1]} ${year}`, 40, 58);
+      // Draw double line for letterhead
+      doc.moveDown(0.5);
+      let lineY = doc.y;
+      doc.lineWidth(2).moveTo(40, lineY).lineTo(doc.page.width - 40, lineY).stroke();
+      doc.lineWidth(1).moveTo(40, lineY + 3).lineTo(doc.page.width - 40, lineY + 3).stroke();
 
+      // (Opsional) Tempat untuk Logo - uncomment dan sesuaikan path jika ada file gambarnya
+      // doc.image('path/to/logo_kalimantan.png', 50, 30, { width: 50 });
+      // doc.image('path/to/logo_tikpolri.png', doc.page.width - 100, 30, { width: 50 });
+
+      doc.moveDown(2);
+
+      // --- TITLE ---
+      doc.font('Helvetica-Bold').fontSize(12).text('LAPORAN BULANAN TIKET', { align: 'center', underline: true });
+      doc.font('Helvetica-Bold').fontSize(10).fillColor('#2B6CB0').text(`Bulan ${monthName} ${year}`, { align: 'center' });
       if (params.padalId) {
-        doc.fontSize(10).font('Helvetica-Oblique')
-          .text('Laporan Padal - Tiket yang ditugaskan', doc.page.width - 290, 40, { width: 250, align: 'right' });
-      } else {
-        doc.fontSize(10).font('Helvetica')
-          .text('Bidtekkom Polda Kalsel', doc.page.width - 290, 40, { width: 250, align: 'right' });
+        doc.fillColor('black').font('Helvetica-Oblique').text('(Laporan Padal - Tiket yang ditugaskan)', { align: 'center' });
       }
+      doc.fillColor('black'); // Reset to default
 
-      // --- SUMMARY CARDS ---
-      doc.moveDown(4); // Move past header
-      const summaryStartY = 110;
-      doc.y = summaryStartY;
+      doc.moveDown(2);
 
-      const drawCard = (x: number, y: number, title: string, value: string | number, bgColor: string, txtColor: string) => {
-        doc.roundedRect(x, y, 115, 60, 6).fill(bgColor);
-        doc.fillColor(txtColor).fontSize(10).font('Helvetica').text(title, x, y + 15, { width: 115, align: 'center' });
-        doc.fontSize(18).font('Helvetica-Bold').text(String(value), x, y + 32, { width: 115, align: 'center' });
-      };
+      // --- SUMMARY TEXT ---
+      // Instead of big cards, use formal text format
+      doc.font('Helvetica-Bold').fontSize(9).text('RINGKASAN:', 40, doc.y);
+      doc.font('Helvetica').fontSize(9)
+         .text(`Total: ${reportData.summary.total} | Pending: ${reportData.summary.pending} | Proses: ${reportData.summary.proses} | Selesai: ${reportData.summary.selesai} | Dibatalkan: ${reportData.summary.dibatalkan} | Rating: ${reportData.summary.averageRating ?? '-'}`, 40, doc.y);
+      doc.moveDown(1);
 
-      const cardSpacing = 129; // (760 - (115*6)) / 5 = 14. 115 + 14 = 129
-      let currentX = 40;
-      
-      drawCard(currentX, summaryStartY, 'Total Tiket', reportData.summary.total, '#EBF8FF', '#2B6CB0');
-      currentX += cardSpacing;
-      drawCard(currentX, summaryStartY, 'PENDING', reportData.summary.pending, '#FFF5F5', '#C53030');
-      currentX += cardSpacing;
-      drawCard(currentX, summaryStartY, 'PROSES', reportData.summary.proses, '#FFFFF0', '#B7791F');
-      currentX += cardSpacing;
-      drawCard(currentX, summaryStartY, 'SELESAI', reportData.summary.selesai, '#F0FFF4', '#2F855A');
-      currentX += cardSpacing;
-      drawCard(currentX, summaryStartY, 'DIBATALKAN', reportData.summary.dibatalkan, '#F7FAFC', '#4A5568');
-      currentX += cardSpacing;
-      drawCard(currentX, summaryStartY, 'Rata-rata Rating', reportData.summary.averageRating !== null ? reportData.summary.averageRating.toFixed(1) : '-', '#FAF5FF', '#6B46C1');
-
-      doc.y = summaryStartY + 90;
-      
       // --- TABLE SECTION ---
       if (reportData.tickets.length === 0) {
-        doc.moveDown(2);
-        doc.fillColor(textColor).fontSize(12).font('Helvetica-Oblique')
-          .text('Tidak ada tiket pada periode ini.', { align: 'center' });
+        doc.moveDown(1);
+        doc.font('Helvetica-Oblique').fontSize(10).text('Tidak ada tiket pada periode ini.', { align: 'center' });
       } else {
-        // Define columns
         const columns = [
-          { header: 'No. Tiket', width: 85 },
-          { header: 'Judul', width: 120 },
-          { header: 'Satker', width: 75 },
-          { header: 'Divisi', width: 70 },
-          { header: 'Lokasi', width: 70 },
-          { header: 'Tgl Buat', width: 55 },
-          { header: 'Tgl Assign', width: 55 },
-          { header: 'Tgl Selesai', width: 55 },
-          { header: 'Status', width: 60 },
-          { header: 'Rating', width: 35 },
-          { header: 'Feedback', width: 80 },
+          { header: 'NO. TIKET', width: 85 },
+          { header: 'JUDUL', width: 120 },
+          { header: 'SATKER', width: 80 },
+          { header: 'DIVISI', width: 70 },
+          { header: 'LOKASI', width: 70 },
+          { header: 'TGL BUAT', width: 60 },
+          { header: 'TGL ASSIGN', width: 60 },
+          { header: 'TGL SELESAI', width: 60 },
+          { header: 'STATUS', width: 55 },
+          { header: 'RATING', width: 40 },
+          { header: 'FEEDBACK', width: 60 },
         ];
 
         let startX = 40;
         let currentY = doc.y;
-        const rowHeight = 22;
-        const totalWidth = columns.reduce((sum, c) => sum + c.width, 0);
+        const rowHeight = 35; // taller rows like in screenshot
+        const totalWidth = columns.reduce((sum, c) => sum + c.width, 0); // 760
 
-        // Function to draw header
-        const drawTableHeader = (y: number) => {
-          doc.roundedRect(startX, y, totalWidth, rowHeight, 4).fill(secondaryColor);
-          doc.fillColor(white).fontSize(8).font('Helvetica-Bold');
-          
+        const drawRow = (y: number, rowData: string[], isHeader = false) => {
           let xPos = startX;
-          columns.forEach((col) => {
-            doc.text(col.header, xPos + 4, y + 6, {
-              width: col.width - 8,
-              height: rowHeight,
-              ellipsis: true,
+          doc.lineWidth(0.5).strokeColor('#888888'); // gray grid lines
+          
+          rowData.forEach((text, i) => {
+            if (isHeader) doc.font('Helvetica-Bold');
+            else doc.font('Helvetica');
+            
+            doc.fillColor('black').fontSize(8);
+            doc.text(text, xPos + 4, y + 6, {
+              width: columns[i].width - 8,
+              height: rowHeight - 6,
               align: 'left'
             });
-            xPos += col.width;
+            
+            // Draw left border for this cell
+            doc.moveTo(xPos, y).lineTo(xPos, y + rowHeight).stroke();
+            xPos += columns[i].width;
           });
+          
+          // Draw rightmost border
+          doc.moveTo(startX + totalWidth, y).lineTo(startX + totalWidth, y + rowHeight).stroke();
+          
+          // Draw bottom border
+          doc.moveTo(startX, y + rowHeight).lineTo(startX + totalWidth, y + rowHeight).stroke();
+
           return y + rowHeight;
         };
 
-        currentY = drawTableHeader(currentY);
+        // Draw top border for the first row (header)
+        doc.moveTo(startX, currentY).lineTo(startX + totalWidth, currentY).stroke();
+        
+        // Draw Header
+        const headerData = columns.map(c => c.header);
+        currentY = drawRow(currentY, headerData, true);
 
-        // Draw data rows
-        let isAlternateRow = false;
-
+        // Draw Data Rows
         for (const ticket of reportData.tickets) {
-          // Check if we need a new page
+          // Check page break
           if (currentY + rowHeight > doc.page.height - 40) {
             doc.addPage();
             currentY = 40;
-            currentY = drawTableHeader(currentY);
+            doc.moveTo(startX, currentY).lineTo(startX + totalWidth, currentY).stroke();
+            currentY = drawRow(currentY, headerData, true);
           }
 
-          // Row background
-          if (isAlternateRow) {
-            doc.rect(startX, currentY, totalWidth, rowHeight).fill(accentColor);
-          }
-          isAlternateRow = !isAlternateRow;
-
-          // Text color based on status for the status column
-          const getStatusColor = (status: string) => {
-            switch(status) {
-              case 'PENDING': return '#C53030';
-              case 'PROSES': return '#B7791F';
-              case 'SELESAI': return '#2F855A';
-              default: return textColor;
-            }
-          };
-
-          let xPos = startX;
           const rowData = [
-            { text: ticket.nomorTiket, color: textColor },
-            { text: ticket.judul, color: textColor },
-            { text: ticket.namaSatker, color: textColor },
-            { text: ticket.divisiSatker ?? '-', color: textColor },
-            { text: ticket.lokasi, color: textColor },
-            { text: formatDate(ticket.tanggalBuat), color: textColor },
-            { text: ticket.tanggalAssign ? formatDate(ticket.tanggalAssign) : '-', color: textColor },
-            { text: ticket.tanggalSelesai ? formatDate(ticket.tanggalSelesai) : '-', color: textColor },
-            { text: ticket.status, color: getStatusColor(ticket.status), bold: true },
-            { text: ticket.rating ? String(ticket.rating.bintang) : '-', color: textColor },
-            { text: ticket.rating ? ticket.rating.feedback : '-', color: textColor },
+            ticket.nomorTiket,
+            ticket.judul,
+            ticket.namaSatker,
+            ticket.divisiSatker ?? '-',
+            ticket.lokasi,
+            formatDate(ticket.tanggalBuat),
+            ticket.tanggalAssign ? formatDate(ticket.tanggalAssign) : '-',
+            ticket.tanggalSelesai ? formatDate(ticket.tanggalSelesai) : '-',
+            ticket.status,
+            ticket.rating ? String(ticket.rating.bintang) : '-',
+            ticket.rating ? ticket.rating.feedback : '-',
           ];
 
-          rowData.forEach((item, i) => {
-            doc.fillColor(item.color).fontSize(8);
-            if (item.bold) doc.font('Helvetica-Bold');
-            else doc.font('Helvetica');
-
-            doc.text(item.text, xPos + 4, currentY + 6, {
-              width: columns[i].width - 8,
-              height: rowHeight,
-              ellipsis: true,
-            });
-            xPos += columns[i].width;
-          });
-
-          currentY += rowHeight;
+          currentY = drawRow(currentY, rowData, false);
         }
-        
-        // Draw bottom border for the table
-        doc.moveTo(startX, currentY).lineTo(startX + totalWidth, currentY).strokeColor('#E2E8F0').lineWidth(1).stroke();
       }
+
+      // --- FOOTER / SIGNATURE ---
+      if (doc.y > doc.page.height - 120) {
+        doc.addPage();
+      } else {
+        doc.moveDown(3);
+      }
+
+      const today = new Date();
+      const formattedDate = `${today.getDate()} ${monthNames[today.getMonth()]} ${today.getFullYear()}`;
       
+      const signX = doc.page.width - 250;
+      let signY = doc.y;
+      
+      doc.font('Helvetica').fontSize(10);
+      doc.text(`Banjarmasin, ${formattedDate}`, signX, signY, { align: 'center', width: 200 });
+      signY += 15;
+      doc.text('Administrator Utama SIAGA,', signX, signY, { align: 'center', width: 200 });
+      
+      signY += 60; // Space for signature
+      
+      doc.font('Helvetica-Bold');
+      doc.text('BID TIK POLDA KALSEL', signX, signY, { align: 'center', width: 200 });
+
       doc.end();
     } catch (error) {
       reject(error);
