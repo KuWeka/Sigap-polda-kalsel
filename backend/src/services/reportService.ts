@@ -2,8 +2,8 @@ import { prisma } from '../lib/prisma';
 import { TicketStatus, Prisma } from '@prisma/client';
 import PDFDocument from 'pdfkit';
 import ExcelJS from 'exceljs';
-
-
+import fs from 'fs';
+import path from 'path';
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
 export interface ReportParams {
@@ -193,9 +193,19 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
       doc.lineWidth(2).moveTo(40, lineY).lineTo(doc.page.width - 40, lineY).stroke();
       doc.lineWidth(1).moveTo(40, lineY + 3).lineTo(doc.page.width - 40, lineY + 3).stroke();
 
-      // (Opsional) Tempat untuk Logo - uncomment dan sesuaikan path jika ada file gambarnya
-      // doc.image('path/to/logo_kalimantan.png', 50, 30, { width: 50 });
-      // doc.image('path/to/logo_tikpolri.png', doc.page.width - 100, 30, { width: 50 });
+      // Tambahkan Logo jika ada file-nya di folder public/images
+      const logoPoldaPath = path.join(__dirname, '../../public/images/logo_polda.png');
+      const logoBidtikPath = path.join(__dirname, '../../public/images/logo_bidtik.png');
+
+      if (fs.existsSync(logoPoldaPath)) {
+        // Logo Polda Kalsel di kiri
+        doc.image(logoPoldaPath, 45, 25, { width: 55 });
+      }
+
+      if (fs.existsSync(logoBidtikPath)) {
+        // Logo Bid TIK di kanan
+        doc.image(logoBidtikPath, doc.page.width - 100, 25, { width: 55 });
+      }
 
       doc.moveDown(2);
 
