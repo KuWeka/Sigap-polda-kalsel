@@ -166,7 +166,7 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
     try {
       const doc = new PDFDocument({
         size: 'A4',
-        layout: 'landscape',
+        layout: 'portrait',
         margin: 40,
       });
 
@@ -231,18 +231,19 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
         doc.moveDown(1);
         doc.font('Helvetica-Oblique').fontSize(10).text('Tidak ada tiket pada periode ini.', { align: 'center' });
       } else {
+        // Adjust column widths to fit A4 Portrait (595.28 - 80 margin = 515.28 usable width)
         const columns = [
-          { header: 'NO. TIKET', width: 85 },
-          { header: 'JUDUL', width: 120 },
-          { header: 'SATKER', width: 80 },
-          { header: 'DIVISI', width: 70 },
-          { header: 'LOKASI', width: 70 },
-          { header: 'TGL BUAT', width: 60 },
-          { header: 'TGL ASSIGN', width: 60 },
-          { header: 'TGL SELESAI', width: 60 },
-          { header: 'STATUS', width: 55 },
-          { header: 'RATING', width: 40 },
-          { header: 'FEEDBACK', width: 60 },
+          { header: 'NO. TIKET', width: 55 },
+          { header: 'JUDUL', width: 80 },
+          { header: 'SATKER', width: 50 },
+          { header: 'DIVISI', width: 40 },
+          { header: 'LOKASI', width: 40 },
+          { header: 'TGL BUAT', width: 45 },
+          { header: 'TGL ASSIGN', width: 45 },
+          { header: 'TGL SELESAI', width: 45 },
+          { header: 'STATUS', width: 45 },
+          { header: 'RATING', width: 25 },
+          { header: 'FEEDBACK', width: 45 },
         ];
 
         let startX = 40;
@@ -258,7 +259,7 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
             if (isHeader) doc.font('Helvetica-Bold');
             else doc.font('Helvetica');
             
-            doc.fillColor('black').fontSize(8);
+            doc.fillColor('black').fontSize(7);
             doc.text(text, xPos + 4, y + 6, {
               width: columns[i].width - 8,
               height: rowHeight - 6,
