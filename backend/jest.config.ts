@@ -9,6 +9,10 @@ const config: Config = {
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
+  reporters: [
+    'default',
+    ['jest-html-reporters', { publicPath: './html-report', filename: 'report.html' }],
+  ],
 };
 
 export default config;
