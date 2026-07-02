@@ -167,7 +167,7 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
       const doc = new PDFDocument({
         size: 'A4',
         layout: 'landscape',
-        margin: 30,
+        margin: 40,
       });
 
       const chunks: Buffer[] = [];
@@ -180,100 +180,156 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
       ];
+      
+      // Theme colors
+      const primaryColor = '#1A365D'; // Dark blue
+      const secondaryColor = '#2B6CB0'; // Lighter blue
+      const accentColor = '#EDF2F7'; // Light gray for backgrounds
+      const textColor = '#2D3748';
+      const white = '#FFFFFF';
 
+      // --- HEADER ---
+      // Draw a subtle header background
+      doc.rect(0, 0, doc.page.width, 90).fill(primaryColor);
+      
       // Title
-      doc.fontSize(16).font('Helvetica-Bold')
-        .text(`Laporan Bulanan - ${monthNames[month - 1]} ${year}`, { align: 'center' });
-      doc.moveDown(0.5);
+      doc.fillColor(white).fontSize(22).font('Helvetica-Bold')
+         .text('SIGAP', 40, 30);
+      
+      doc.fontSize(14).font('Helvetica')
+         .text(`Laporan Bulanan - ${monthNames[month - 1]} ${year}`, 40, 58);
 
       if (params.padalId) {
+        doc.fontSize(10).font('Helvetica-Oblique')
+          .text('Laporan Padal - Tiket yang ditugaskan', doc.page.width - 290, 40, { width: 250, align: 'right' });
+      } else {
         doc.fontSize(10).font('Helvetica')
-          .text('(Laporan Padal - Tiket yang ditugaskan)', { align: 'center' });
-        doc.moveDown(0.5);
+          .text('Bidtekkom Polda Kalsel', doc.page.width - 290, 40, { width: 250, align: 'right' });
       }
 
-      // Summary section
-      doc.fontSize(12).font('Helvetica-Bold').text('Ringkasan:');
-      doc.moveDown(0.3);
-      doc.fontSize(10).font('Helvetica');
-      doc.text(`Total Tiket: ${reportData.summary.total}`);
-      doc.text(`PENDING: ${reportData.summary.pending}`);
-      doc.text(`PROSES: ${reportData.summary.proses}`);
-      doc.text(`SELESAI: ${reportData.summary.selesai}`);
-      doc.text(`DIBATALKAN: ${reportData.summary.dibatalkan}`);
-      doc.text(`Rata-rata Rating: ${reportData.summary.averageRating !== null ? reportData.summary.averageRating.toFixed(1) : '-'}`);
-      doc.moveDown(1);
+      // --- SUMMARY CARDS ---
+      doc.moveDown(4); // Move past header
+      const summaryStartY = 110;
+      doc.y = summaryStartY;
 
-      // Table header
+      const drawCard = (x: number, y: number, title: string, value: string | number, bgColor: string, txtColor: string) => {
+        doc.roundedRect(x, y, 115, 60, 6).fill(bgColor);
+        doc.fillColor(txtColor).fontSize(10).font('Helvetica').text(title, x, y + 15, { width: 115, align: 'center' });
+        doc.fontSize(18).font('Helvetica-Bold').text(String(value), x, y + 32, { width: 115, align: 'center' });
+      };
+
+      const cardSpacing = 129; // (760 - (115*6)) / 5 = 14. 115 + 14 = 129
+      let currentX = 40;
+      
+      drawCard(currentX, summaryStartY, 'Total Tiket', reportData.summary.total, '#EBF8FF', '#2B6CB0');
+      currentX += cardSpacing;
+      drawCard(currentX, summaryStartY, 'PENDING', reportData.summary.pending, '#FFF5F5', '#C53030');
+      currentX += cardSpacing;
+      drawCard(currentX, summaryStartY, 'PROSES', reportData.summary.proses, '#FFFFF0', '#B7791F');
+      currentX += cardSpacing;
+      drawCard(currentX, summaryStartY, 'SELESAI', reportData.summary.selesai, '#F0FFF4', '#2F855A');
+      currentX += cardSpacing;
+      drawCard(currentX, summaryStartY, 'DIBATALKAN', reportData.summary.dibatalkan, '#F7FAFC', '#4A5568');
+      currentX += cardSpacing;
+      drawCard(currentX, summaryStartY, 'Rata-rata Rating', reportData.summary.averageRating !== null ? reportData.summary.averageRating.toFixed(1) : '-', '#FAF5FF', '#6B46C1');
+
+      doc.y = summaryStartY + 90;
+      
+      // --- TABLE SECTION ---
       if (reportData.tickets.length === 0) {
-        doc.fontSize(10).font('Helvetica')
+        doc.moveDown(2);
+        doc.fillColor(textColor).fontSize(12).font('Helvetica-Oblique')
           .text('Tidak ada tiket pada periode ini.', { align: 'center' });
       } else {
         // Define columns
         const columns = [
-          { header: 'No. Tiket', width: 80 },
-          { header: 'Judul', width: 100 },
-          { header: 'Satker', width: 80 },
+          { header: 'No. Tiket', width: 85 },
+          { header: 'Judul', width: 120 },
+          { header: 'Satker', width: 75 },
           { header: 'Divisi', width: 70 },
           { header: 'Lokasi', width: 70 },
-          { header: 'Tgl Buat', width: 65 },
-          { header: 'Tgl Assign', width: 65 },
-          { header: 'Tgl Selesai', width: 65 },
-          { header: 'Status', width: 65 },
-          { header: 'Rating', width: 40 },
+          { header: 'Tgl Buat', width: 55 },
+          { header: 'Tgl Assign', width: 55 },
+          { header: 'Tgl Selesai', width: 55 },
+          { header: 'Status', width: 60 },
+          { header: 'Rating', width: 35 },
           { header: 'Feedback', width: 80 },
         ];
 
-        const startX = doc.x;
+        let startX = 40;
         let currentY = doc.y;
-        const rowHeight = 20;
+        const rowHeight = 22;
+        const totalWidth = columns.reduce((sum, c) => sum + c.width, 0);
 
-        // Draw header row
-        doc.fontSize(8).font('Helvetica-Bold');
-        let xPos = startX;
-        columns.forEach((col) => {
-          doc.text(col.header, xPos, currentY, {
-            width: col.width,
-            height: rowHeight,
-            ellipsis: true,
+        // Function to draw header
+        const drawTableHeader = (y: number) => {
+          doc.roundedRect(startX, y, totalWidth, rowHeight, 4).fill(secondaryColor);
+          doc.fillColor(white).fontSize(8).font('Helvetica-Bold');
+          
+          let xPos = startX;
+          columns.forEach((col) => {
+            doc.text(col.header, xPos + 4, y + 6, {
+              width: col.width - 8,
+              height: rowHeight,
+              ellipsis: true,
+              align: 'left'
+            });
+            xPos += col.width;
           });
-          xPos += col.width;
-        });
+          return y + rowHeight;
+        };
 
-        currentY += rowHeight;
-
-        // Draw a line under header
-        doc.moveTo(startX, currentY - 3)
-          .lineTo(startX + columns.reduce((sum, c) => sum + c.width, 0), currentY - 3)
-          .stroke();
+        currentY = drawTableHeader(currentY);
 
         // Draw data rows
-        doc.fontSize(7).font('Helvetica');
+        let isAlternateRow = false;
+
         for (const ticket of reportData.tickets) {
           // Check if we need a new page
-          if (currentY + rowHeight > doc.page.height - 50) {
+          if (currentY + rowHeight > doc.page.height - 40) {
             doc.addPage();
-            currentY = 30;
+            currentY = 40;
+            currentY = drawTableHeader(currentY);
           }
 
-          xPos = startX;
+          // Row background
+          if (isAlternateRow) {
+            doc.rect(startX, currentY, totalWidth, rowHeight).fill(accentColor);
+          }
+          isAlternateRow = !isAlternateRow;
+
+          // Text color based on status for the status column
+          const getStatusColor = (status: string) => {
+            switch(status) {
+              case 'PENDING': return '#C53030';
+              case 'PROSES': return '#B7791F';
+              case 'SELESAI': return '#2F855A';
+              default: return textColor;
+            }
+          };
+
+          let xPos = startX;
           const rowData = [
-            ticket.nomorTiket,
-            ticket.judul,
-            ticket.namaSatker,
-            ticket.divisiSatker ?? '-',
-            ticket.lokasi,
-            formatDate(ticket.tanggalBuat),
-            ticket.tanggalAssign ? formatDate(ticket.tanggalAssign) : '-',
-            ticket.tanggalSelesai ? formatDate(ticket.tanggalSelesai) : '-',
-            ticket.status,
-            ticket.rating ? String(ticket.rating.bintang) : '-',
-            ticket.rating ? ticket.rating.feedback : '-',
+            { text: ticket.nomorTiket, color: textColor },
+            { text: ticket.judul, color: textColor },
+            { text: ticket.namaSatker, color: textColor },
+            { text: ticket.divisiSatker ?? '-', color: textColor },
+            { text: ticket.lokasi, color: textColor },
+            { text: formatDate(ticket.tanggalBuat), color: textColor },
+            { text: ticket.tanggalAssign ? formatDate(ticket.tanggalAssign) : '-', color: textColor },
+            { text: ticket.tanggalSelesai ? formatDate(ticket.tanggalSelesai) : '-', color: textColor },
+            { text: ticket.status, color: getStatusColor(ticket.status), bold: true },
+            { text: ticket.rating ? String(ticket.rating.bintang) : '-', color: textColor },
+            { text: ticket.rating ? ticket.rating.feedback : '-', color: textColor },
           ];
 
-          rowData.forEach((text, i) => {
-            doc.text(text, xPos, currentY, {
-              width: columns[i].width,
+          rowData.forEach((item, i) => {
+            doc.fillColor(item.color).fontSize(8);
+            if (item.bold) doc.font('Helvetica-Bold');
+            else doc.font('Helvetica');
+
+            doc.text(item.text, xPos + 4, currentY + 6, {
+              width: columns[i].width - 8,
               height: rowHeight,
               ellipsis: true,
             });
@@ -282,8 +338,11 @@ export async function exportPDF(params: ReportParams): Promise<Buffer> {
 
           currentY += rowHeight;
         }
+        
+        // Draw bottom border for the table
+        doc.moveTo(startX, currentY).lineTo(startX + totalWidth, currentY).strokeColor('#E2E8F0').lineWidth(1).stroke();
       }
-
+      
       doc.end();
     } catch (error) {
       reject(error);
