@@ -218,20 +218,63 @@ sigap-polda-kalsel/                   ← Root monorepo (npm workspaces)
 
 ## 🔄 Alur Tiket & Role
 
-```
-SATKER                BIDTEKKOM              PADAL              TEKNISI
-  │                       │                    │                   │
-  │── Buat Tiket ─────────▶│                    │                   │
-  │                       │── Validasi          │                   │
-  │                       │── Assign ke PADAL ──▶│                   │
-  │                       │                    │── Assign Teknisi ──▶│
-  │                       │                    │                   │── Kerjakan
-  │                       │                    │◀── Selesaikan ─────│
-  │◀── Notifikasi ─────────│◀───────────────────│                   │
-  │                       │                    │                   │
-  │── Beri Rating ─────────────────────────────────────────────────▶│
-  │   (wajib sebelum                                                │
-  │    buat tiket baru)                                             │
+```mermaid
+graph TD
+    %% Pengaturan Warna Khusus per Aktor
+    classDef satker fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000,font-size:16px,font-weight:bold
+    classDef sistem fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#000,font-size:16px,font-weight:bold
+    classDef bidtekkom fill:#cce5ff,stroke:#007bff,stroke-width:2px,color:#000,font-size:16px,font-weight:bold
+    classDef padal fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000,font-size:16px,font-weight:bold
+    classDef teknisi fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px,color:#000,font-size:16px,font-weight:bold
+    classDef startend fill:#000,stroke:#000,color:#fff,font-size:18px,font-weight:bold
+
+    %% Titik Node (Nama Aktor langsung disematkan)
+    NodeMulai((Mulai))
+    BuatTiket(SATKER: Isi Form Tiket)
+    CekRating{SISTEM: Cek Ulasan Tertunda?}
+    Tolak(SISTEM: Blokir Tiket)
+    BeriRating(SATKER: Beri Ulasan)
+    Simpan(SISTEM: Set PENDING)
+    Validasi{BIDTEKKOM: Validasi Laporan?}
+    Batal(BIDTEKKOM: Batalkan Tiket)
+    Teruskan(BIDTEKKOM: Assign ke PADAL)
+    Assign(PADAL: Delegasi ke Teknisi)
+    Kerja(TEKNISI: Perbaiki Gangguan)
+    TutupTiket(PADAL: Verifikasi Selesai)
+    UpdateSelesai(SISTEM: Set SELESAI)
+    NodeSelesai((Selesai))
+
+    %% Transisi Alur
+    NodeMulai --> BuatTiket
+    BuatTiket --> CekRating
+    
+    CekRating -->|Ada Tertunda| Tolak
+    Tolak -.->|Wajib| BeriRating
+    
+    CekRating -->|Aman| Simpan
+    Simpan --> Validasi
+    
+    Validasi -->|Ditolak| Batal
+    Batal --> NodeSelesai
+    
+    Validasi -->|Disetujui| Teruskan
+    Teruskan --> Assign
+    
+    Assign --> Kerja
+    Kerja --> TutupTiket
+    
+    TutupTiket --> UpdateSelesai
+    UpdateSelesai --> BeriRating
+    
+    BeriRating --> NodeSelesai
+
+    %% Penerapan Warna
+    class NodeMulai,NodeSelesai startend
+    class BuatTiket,BeriRating satker
+    class CekRating,Tolak,Simpan,UpdateSelesai sistem
+    class Validasi,Batal,Teruskan bidtekkom
+    class Assign,TutupTiket padal
+    class Kerja teknisi
 ```
 
 ### Hak Akses per Role
@@ -267,27 +310,109 @@ PENDING ──┤── BIDTEKKOM assign ──▶ PROSES ──▶ SELESAI
 
 ## 🗄 Database Schema
 
-```
-User ──────────────────────────────────────────────────────────────
-  id, nama, email, password, role, nip, nomorHp, divisi
-  foto, alamat, deletedAt (soft delete)
+```mermaid
+classDiagram
+    %% Pengaturan Gaya & Arah
+    direction TB
+    classDef default fill:#ffffff,stroke:#333333,stroke-width:1.5px,font-family:sans-serif,font-size:14px
 
-Ticket ────────────────────────────────────────────────────────────
-  nomorTiket (TKT-YYYY-00001, atomic via TicketSequence)
-  judul, deskripsi, kategori, lokasi, status
-  creatorId (SATKER) → padalId (PADAL) → teknisiId (TEKNISI)
-  attachments: Attachment[]
-  rating: Rating (1 per tiket)
+    %% Definisi Entitas
+    class USER {
+        +String id <<PK>>
+        +String email <<Unique>>
+        +String password <<Hashed>>
+        +String nama
+        +String nomorWhatsApp
+        +Role role <<SATKER, BIDTEKKOM, PADAL, TEKNISI>>
+        +String divisi
+        +String foto
+        +String tema
+        +String bahasa
+        +String padalId <<FK>>
+        +String passwordResetToken
+        +DateTime passwordResetExpires
+        +DateTime deletedAt
+        +DateTime createdAt
+        +DateTime updatedAt
+    }
+    
+    class TICKET {
+        +String id <<PK>>
+        +String nomorTiket <<Unique, SGP-YYYY-XXXXX>>
+        +String judul
+        +Text deskripsi
+        +TicketCategory kategori <<HARDWARE, SOFTWARE, dll>>
+        +String lokasi
+        +TicketStatus status <<PENDING, PROSES, SELESAI, BATAL>>
+        +String divisiSatker
+        +String creatorId <<FK>>
+        +String padalId <<FK>>
+        +String alasanBatal
+        +DateTime tanggalBuat
+        +DateTime tanggalAssign
+        +DateTime tanggalSelesai
+    }
+    
+    class ATTACHMENT {
+        +String id <<PK>>
+        +String ticketId <<FK>>
+        +String originalName
+        +String storedName
+        +String mimeType
+        +Int size
+        +DateTime createdAt
+    }
+    
+    class RATING {
+        +String id <<PK>>
+        +String ticketId <<FK, Unique>>
+        +String userId <<FK>>
+        +Int bintang <<1-5>>
+        +Text feedback
+        +DateTime createdAt
+    }
+    
+    class NOTIFICATION {
+        +String id <<PK>>
+        +String userId <<FK>>
+        +NotificationType type
+        +String ticketNumber
+        +String message
+        +Boolean isRead
+        +DateTime createdAt
+    }
+    
+    class AUDIT_LOG {
+        +String id <<PK>>
+        +AuditEventType eventType
+        +String actorId <<FK>>
+        +String actorNama
+        +String targetEntityId
+        +Json metadata
+        +DateTime createdAt
+    }
+    
+    class SYSTEM_SETTINGS {
+        +String id <<PK>>
+        +String appName
+        +String appLogo
+    }
+    
+    class TICKET_SEQUENCE {
+        +String id <<PK>>
+        +Int year <<Unique>>
+        +Int seq
+    }
 
-AuditLog ──────────────────────────────────────────────────────────
-  eventType (14+ jenis: LOGIN, TICKET_CREATED, TICKET_ASSIGNED, ...)
-  actorId, ticketId, metadata (JSON), createdAt
-
-Notification ──────────────────────────────────────────────────────
-  userId, type, message, isRead, createdAt
-
-SystemSettings ────────────────────────────────────────────────────
-  appName, logoUrl (singleton row)
+    %% Relasi
+    USER "1" --> "*" USER : teamMembers
+    USER "1" --> "*" TICKET : creates
+    USER "1" --> "*" TICKET : assignedTo
+    TICKET "1" *-- "*" ATTACHMENT : has
+    TICKET "1" o-- "0..1" RATING : receives
+    USER "1" --> "*" RATING : gives
+    USER "1" --> "*" NOTIFICATION : receives
+    USER "1" --> "*" AUDIT_LOG : triggers
 ```
 
 ---
